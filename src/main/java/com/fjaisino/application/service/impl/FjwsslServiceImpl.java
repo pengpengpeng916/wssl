@@ -13,6 +13,11 @@ import com.fjaisino.application.common.model.fwsk.fpsl.request.FpslInputInput;
 import com.fjaisino.application.common.model.fwsk.fpsl.request.FwskFpslInputData;
 import com.fjaisino.application.common.model.fwsk.fpsl.response.FpslOutputFpxt;
 import com.fjaisino.application.common.model.fwsk.fpsl.response.FpslOutputOutput;
+import com.fjaisino.application.common.model.fwsk.psdz.request.FwskPsdzInputData;
+import com.fjaisino.application.common.model.fwsk.psdz.request.PsdzInputFpxt;
+import com.fjaisino.application.common.model.fwsk.psdz.request.PsdzInputInput;
+import com.fjaisino.application.common.model.fwsk.psdz.response.PsdzOutputFpxt;
+import com.fjaisino.application.common.model.fwsk.psdz.response.PsdzOutputOutput;
 import com.fjaisino.application.common.model.fwsk.pzhd.request.FwskPzhdInputData;
 import com.fjaisino.application.common.model.fwsk.pzhd.request.PzhdInputFpxt;
 import com.fjaisino.application.common.model.fwsk.pzhd.request.PzhdInputInput;
@@ -160,6 +165,10 @@ public class FjwsslServiceImpl implements FjwsslService {
         }else if("0042".equals(optype) && "SKP".equals(sktype)){
             logger.info("撤销申领（0042 货运）");
             String outputJson = hyxtSlcx(inputJson);
+            return outputJson;
+        }else if("0044".equals(optype) && "SKP".equals(sktype)){
+            logger.info("从征管获取配送地址(0044)");
+            String outputJson = wsslPsdz(inputJson);
             return outputJson;
         }else{
             logger.error("输入的optype或sktype有误！");
@@ -649,6 +658,75 @@ public class FjwsslServiceImpl implements FjwsslService {
         String outJson = JSONObject.toJSONString(zzqrOutputOutput);
         return outJson;
 
+    }
+
+    //从征管获取配送地址(0044)
+    public String wsslPsdz(String inputJson){
+        FwskPsdzInputData psdzInputData = JSON.parseObject(inputJson,FwskPsdzInputData.class);
+        PsdzInputInput input = psdzInputData.getData();
+
+        String optype = psdzInputData.getOptype();
+        String sktype = psdzInputData.getSktype();
+        String nsrsbh = input.getNsrsbh();
+
+        PsdzInputFpxt fpxt = new PsdzInputFpxt();
+        fpxt.setInput(input);
+
+        String innerXml = XmlUtil.convertToXml(fpxt);
+        logger.info("内层业务报文："+innerXml);
+
+        ZzsfppxtParam zzsfppxtParam = new ZzsfppxtParam();
+        zzsfppxtParam.setOptype(optype);
+        zzsfppxtParam.setSktyp(sktype);
+        zzsfppxtParam.setNsrsbh(nsrsbh);
+        zzsfppxtParam.setKpjh("0");
+        zzsfppxtParam.setSbbh("");
+
+        String tripXml = null;
+        try {
+            tripXml = AnalysisData.FwskAssemblyTripMessage(zzsfppxtParam,innerXml);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if("false".equals(tripXml)){
+            logger.error("组装通信报文时错误！");
+            return fwskReturnError("0003","组装通信报文时错误！");
+        }
+        logger.info("通信报文： "+tripXml);
+        String resultTrip = null;
+        try{
+            //resultTrip = HttpUtil.sendPostRequest(tyslUrl,param1);
+            resultTrip = HttpUtil.sendPostRequest(tyslUrl,tripXml);
+        }catch (Exception e){
+            return fwskReturnError("0006","连接统一受理平台失败！");
+        }
+
+        if(StringUtils.isEmpty(resultTrip)){
+            logger.error("返回数据为空！");
+            return fwskReturnError("0004","返回数据为空！");
+        }
+
+        ResultData resultData = AnalysisData.FwskAnalysisTripMessage(resultTrip);
+        String resultInnerXml = null;
+        if("0".equals(resultData.getReturnCode())){
+            resultInnerXml = resultData.getReturnData();
+        }else{
+            //返回错误信息
+            logger.error(resultData.getReturnMessage());
+            return fwskReturnError("0005",resultData.getReturnMessage());
+        }
+        //解析输出报文
+        PsdzOutputFpxt psdzOutputFpxt = null;
+
+        try {
+            psdzOutputFpxt = XmlUtil.convertToJavaBean(resultInnerXml,PsdzOutputFpxt.class);
+        } catch (JAXBException e) {
+            e.printStackTrace();
+        }
+        PsdzOutputOutput psdzOutputOutput = psdzOutputFpxt.getOutput();
+        String outJson = JSONObject.toJSONString(psdzOutputOutput);
+        return outJson;
     }
 
 	
