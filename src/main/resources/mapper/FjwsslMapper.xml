@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fjaisino.application.mapper.FjwsslMapper">
+
+    <!--<select id="getAllStudent"  resultType="com.study.springboot.model.Student">
+      select * from student
+    </select>-->
+    <!--增专增普根据申领需要查询快递单号-->
+    <select id="getFwskKdhh"  parameterType="String" resultType="String">
+        select rsk.kddh from ref_slxh_kddh rsk where rsk.slxh = '${value}'
+    </select>
+    
+     <select id="selectkddhs" parameterType="String" resultType="String">
+        select rsk.kddh from ref_slxh_kddh rsk where rsk.slxh = #{value}
+    </select>
+</mapper>
