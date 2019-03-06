@@ -166,7 +166,7 @@ public class FjwsslServiceImpl implements FjwsslService {
             logger.info("撤销申领（0042 货运）");
             String outputJson = hyxtSlcx(inputJson);
             return outputJson;
-        }else if("0044".equals(optype) && "SKP".equals(sktype)){
+        }else if("0044".equals(optype) && "JSP".equals(sktype)){
             logger.info("从征管获取配送地址(0044)");
             String outputJson = wsslPsdz(inputJson);
             return outputJson;
@@ -699,6 +699,7 @@ public class FjwsslServiceImpl implements FjwsslService {
             //resultTrip = HttpUtil.sendPostRequest(tyslUrl,param1);
             resultTrip = HttpUtil.sendPostRequest(tyslUrl,tripXml);
         }catch (Exception e){
+            e.printStackTrace();
             return fwskReturnError("0006","连接统一受理平台失败！");
         }
 
